@@ -8,10 +8,11 @@ const hbs          = require('hbs');
 const mongoose     = require('mongoose');
 const logger       = require('morgan');
 const path         = require('path');
-
+const session = require("express-session");
+const MongoStore = require("connect-mongo")(session);
 
 mongoose
-  .connect('mongodb://localhost/starter-code', {useNewUrlParser: true})
+  .connect('mongodb://localhost/lab-express-auth', {useNewUrlParser: true})
   .then(x => {
     console.log(`Connected to Mongo! Database name: "${x.connections[0].name}"`)
   })
@@ -29,6 +30,18 @@ app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
+
+// Setup authentication session
+app.use(session( {
+	secret: "basic-auth-secret",
+	cookie: {max: 60000}, //cookie living on the browser
+	store: new MongoStore ({
+		mongooseConnection: mongoose.connection,
+		resave: true,
+		saveUninitialized: false,
+		ttl: 24 * 60 * 60 // session living on the server -1day 
+	})
+}))
 
 // Express View engine setup
 
@@ -50,9 +63,12 @@ app.use(favicon(path.join(__dirname, 'public', 'images', 'favicon.ico')));
 app.locals.title = 'Express - Generated with IronGenerator';
 
 
-
-const index = require('./routes/index');
+const auth = require("./routes/auth-routes");
+app.use("/", auth);
+const index = require('./routes/site-routes');
 app.use('/', index);
+
+
 
 
 module.exports = app;
